@@ -95,3 +95,58 @@ class ProductoListView(LoginRequiredMixin, ListView):     # LISTAR
     context_object_name = "productos"                      # nombre de la lista en el HTML
     paginate_by = 5                                        # 5 por página → envía page_obj
     extra_context = {"titulo": "Productos"}                # datos fijos extra para el HTML
+
+    def get_queryset(self):                                # ¿QUÉ registros se muestran?
+        productos = super().get_queryset()                 # lo normal: Producto.objects.all()
+        productos = productos.select_related("marca").prefetch_related("categorias")   # menos consultas
+        q = self.request.GET.get("q", "")                  # buscador: ?q=galaxy
+        if q:
+            productos = productos.filter(nombre__icontains=q)
+        return productos
+
+    def get_context_data(self, **kwargs):                  # ¿qué datos EXTRA recibe el HTML?
+        contexto = super().get_context_data(**kwargs)      # lo que ListView ya armó
+        contexto["q"] = self.request.GET.get("q", "")      # + lo buscado
+        return contexto
+    
+class ProductoCreateView(LoginRequiredMixin, UsuarioRegistroMixin, SuccessMessageMixin, CreateView):   # CREAR
+    model = Producto
+    form_class = ProductoForm                              # nuestro formulario
+    template_name = "facturacion/producto_form.html"
+    success_url = reverse_lazy("facturacion:producto_lista")   # a dónde ir al guardar
+    success_message = "Producto «%(nombre)s» creado."      # %(nombre)s = el campo nombre del formulario
+    extra_context = {"titulo": "Nuevo producto", "boton": "Guardar"}
+    
+class ProductoUpdateView(LoginRequiredMixin, UsuarioRegistroMixin, SuccessMessageMixin, UpdateView):   # EDITAR
+    model = Producto
+    form_class = ProductoForm
+    template_name = "facturacion/producto_form.html"       # el mismo template de crear
+    success_url = reverse_lazy("facturacion:producto_lista")
+    success_message = "Producto «%(nombre)s» actualizado."
+    extra_context = {"titulo": "Editar producto", "boton": "Actualizar"}
+
+    def form_invalid(self, form):                          # cuando hay errores (POST inválido)
+        messages.error(self.request, "Revisa los campos marcados en rojo.")
+        return super().form_invalid(form)                  # vuelve a mostrar el formulario
+    
+class ProductoDetailView(LoginRequiredMixin, DetailView):  # VER UNO
+    model = Producto
+    template_name = "facturacion/producto_detalle.html"
+    context_object_name = "producto"
+    
+class ProductoDeleteView(LoginRequiredMixin, DeleteView):  # ELIMINAR
+    model = Producto
+    template_name = "facturacion/producto_eliminar.html"
+    context_object_name = "producto"
+    success_url = reverse_lazy("facturacion:producto_lista")
+
+    def form_valid(self, form):                            # se ejecuta al confirmar (POST)
+        nombre = self.object.nombre                        # self.object = el producto a eliminar
+        try:
+            respuesta = super().form_valid(form)           # DELETE + redirect
+        except ProtectedError:                             # ya está en una venta o compra (PROTECT)
+            messages.error(self.request, f"No se puede eliminar «{nombre}»: ya tiene ventas o compras. Desactívalo.")
+            return redirect("facturacion:producto_lista")
+        messages.success(self.request, f"Producto «{nombre}» eliminado.")
+        return respuesta
+    
