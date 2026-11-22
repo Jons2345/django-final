@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block titulo %}{{ titulo }}{% endblock %}
+
+{% block contenido %}
+<div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+    <h1 class="h3 titulo-pagina m-0">{{ titulo }}</h1>
+    <a href="{% url 'facturacion:compra_crear' %}" class="btn btn-verde">+ Nueva compra</a>
+</div>
+
+{# Dos filtros en el mismo GET: ?proveedor=2&tipo_pago=credito #}
+<form method="get" class="row g-2 mb-3">
+    <div class="col-md-5">
+        <select name="proveedor" class="form-select">
+            <option value="">Todos los proveedores</option>
+            {% for p in proveedores %}
+                {# p.pk es número y proveedor (de la URL) es texto: stringformat los compara igual #}
+                <option value="{{ p.pk }}" {% if p.pk|stringformat:"s" == proveedor %}selected{% endif %}>{{ p }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="col-md-5">
+        <select name="tipo_pago" class="form-select">
+            <option value="">Todos los tipos de pago</option>
+            {% for valor, texto in tipos_pago %}       {# TipoPago.choices #}
+                <option value="{{ valor }}" {% if valor == tipo_pago %}selected{% endif %}>{{ texto }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="col-md-2"><button type="submit" class="btn btn-outline-secondary w-100">Filtrar</button></div>
+</form>
+
+<div class="tarjeta p-0 table-responsive">
+    <table class="table table-hover align-middle m-0">
+        <thead><tr><th>N.º</th><th>Fecha</th><th>Proveedor</th><th>Pago</th><th class="text-end">Total</th><th class="text-end">Acciones</th></tr></thead>
+        <tbody>
+            {% for compra in compras %}
+            <tr>
+                <td>{{ compra.pk }}</td>
+                <td>{{ compra.fecha_hora|date:"d/m/Y H:i" }}</td>
+                <td>{{ compra.proveedor }}</td>
+                <td><span class="badge bg-light text-dark border">{{ compra.get_tipo_pago_display }}</span></td>
+                <td class="text-end fw-semibold">${{ compra.total }}</td>
+                <td class="text-end text-nowrap">
+                    <a href="{% url 'facturacion:compra_detalle' compra.pk %}" class="btn btn-sm btn-outline-success">Ver</a>
+                    <a href="{% url 'facturacion:compra_editar' compra.pk %}" class="btn btn-sm btn-outline-primary">Editar</a>
+                    <a href="{% url 'facturacion:compra_eliminar' compra.pk %}" class="btn btn-sm btn-outline-danger">Eliminar</a>
+                </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="6" class="text-center text-muted py-4">No hay compras.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% include "facturacion/_paginacion.html" %}   {# conserva proveedor y tipo_pago al cambiar de página #}
+{% endblock %}

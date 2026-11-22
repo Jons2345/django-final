@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block titulo %}Mi perfil{% endblock %}
+
+{% block contenido %}
+<div class="row justify-content-center">
+    <div class="col-md-7 col-lg-6">
+        <div class="tarjeta">
+            {# object = el perfil que devolvió get_object(): SIEMPRE el del usuario conectado #}
+            <h1 class="h4 titulo-pagina mb-1">Mi perfil</h1>
+            <p class="text-muted small mb-4">Usuario: <b>{{ object.usuario.username }}</b>{% if object.usuario.email %} · {{ object.usuario.email }}{% endif %}</p>
+            <form method="post" novalidate>
+                {% csrf_token %}
+                {% for campo in form %}               {# cedula, telefono, cargo #}
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold" for="{{ campo.id_for_label }}">{{ campo.label }}</label>
+                        {{ campo }}
+                        {% for error in campo.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+                    </div>
+                {% endfor %}
+                <button type="submit" class="btn btn-verde">Guardar</button>
+                <a href="{% url 'home' %}" class="btn btn-outline-secondary">Volver</a>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -2,10 +2,10 @@ from django import forms
 from django.core.exceptions import ValidationError
 from django.forms.models import BaseInlineFormSet, inlineformset_factory
 
-from .models import Marca, Producto, Venta, DetalleVenta                     # El modelo del que sale el formulario
+from .models import Marca, Producto, Venta, DetalleVenta, Categoria, Cliente, Proveedor, Compra, DetalleCompra, Perfil                     # El modelo del que sale el formulario
 
 
-class MarcaForm(forms.ModelForm):                # ModelForm: formulario construido desde un modelo
+class MarcaForm(forms.ModelForm):                # ModelForm: formulario construido desde un modelo, 
 
     class Meta:                                  # Configuración del formulario
         model = Marca                            # ¿De qué modelo sale? De Marca
@@ -137,3 +137,161 @@ DetalleVentaFormSet = inlineformset_factory(
     validate_min=True,                            # ...y se valida que exista
     can_delete=True,                              # cada fila tiene la casilla "Quitar"
 )
+
+
+class CategoriaForm(forms.ModelForm):
+ class Meta:                                  
+        model = Categoria                            
+        fields = ["nombre", "descripcion", "activo"]
+        labels = {                              
+            "nombre": "Nombre de la categoria",
+        }
+        widgets = {                              
+            "nombre": forms.TextInput(attrs={"class": "form-control", "placeholder": "Ej: fruta"}),
+            "descripcion": forms.Textarea(attrs={"class": "form-control", "rows": 3}),
+            "activo": forms.CheckboxInput(attrs={"class": "form-check-input"}),
+        }        
+        
+        
+class ClienteForm(forms.ModelForm):
+    class Meta:
+        model = Cliente
+        fields = ["cedula", "nombres", "apellidos", "email", "telefono", "direccion"]
+        widgets = {
+            "cedula": forms.TextInput(attrs={"class": "form-control", "maxlength": "10", "placeholder": "10 dígitos"}),
+            "nombres": forms.TextInput(attrs={"class": "form-control"}),
+            "apellidos": forms.TextInput(attrs={"class": "form-control"}),
+            "email": forms.EmailInput(attrs={"class": "form-control", "placeholder": "correo@ejemplo.com"}),
+            "telefono": forms.TextInput(attrs={"class": "form-control"}),
+            "direccion": forms.TextInput(attrs={"class": "form-control"}),
+        }
+
+    def clean_cedula(self):
+        """Regla de la cédula: exactamente 10 caracteres y solo números."""
+        cedula = self.cleaned_data["cedula"].strip()     
+        if len(cedula) != 10:
+            raise forms.ValidationError("La cédula debe tener exactamente 10 dígitos.")
+        if not cedula.isdigit():                        
+            raise forms.ValidationError("La cédula solo puede tener números.")
+        return cedula                                     
+
+
+
+class ProveedorForm(forms.ModelForm):
+    class Meta:
+        model = Proveedor
+        fields = ["nombre", "apellido", "ruc", "email", "contacto", "logo"]
+        widgets = {
+            "nombre": forms.TextInput(attrs={"class": "form-control"}),
+            "apellido": forms.TextInput(attrs={"class": "form-control"}),
+            "ruc": forms.TextInput(attrs={"class": "form-control", "maxlength": "13", "placeholder": "13 dígitos, termina en 001"}),
+            "email": forms.EmailInput(attrs={"class": "form-control"}),
+            "contacto": forms.TextInput(attrs={"class": "form-control"}),
+            "logo": forms.ClearableFileInput(attrs={"class": "form-control", "accept": "image/*"}),
+        }
+
+    def clean_ruc(self):
+        """Regla del RUC de Ecuador: 13 dígitos, solo números y termina en 001."""
+        ruc = self.cleaned_data["ruc"].strip()
+        if len(ruc) != 13 or not ruc.isdigit():
+            raise forms.ValidationError("El RUC debe tener exactamente 13 números.")
+        if not ruc.endswith("001"):                      
+            raise forms.ValidationError("El RUC debe terminar en 001.")
+        return ruc
+
+
+class CompraForm(forms.ModelForm):
+    class Meta:
+        model = Compra
+        fields = ["proveedor", "fecha_hora", "tipo_pago"] 
+        widgets = {
+            "proveedor": forms.Select(attrs={"class": "form-select"}),
+            "fecha_hora": forms.DateTimeInput(attrs={"class": "form-control", "type": "datetime-local"},
+                                              format="%Y-%m-%dT%H:%M"),
+            "tipo_pago": forms.Select(attrs={"class": "form-select"}),
+        }
+
+class DetalleCompraForm(forms.ModelForm):
+    producto = ProductoConPrecioField(
+        queryset=Producto.objects.all(),
+        empty_label="— Elige un producto —",
+        widget=forms.Select(attrs={"class": "form-select"}),
+    )
+
+    class Meta:
+        model = DetalleCompra
+        fields = ["producto", "cantidad", "precio"]
+        widgets = {
+            "cantidad": forms.NumberInput(attrs={"class": "form-control", "min": "1"}),
+            "precio": forms.NumberInput(attrs={"class": "form-control", "step": "0.01", "min": "0.01"}),
+        }
+
+    def clean_precio(self):
+        precio = self.cleaned_data["precio"]
+        if precio <= 0:
+            raise forms.ValidationError("El costo debe ser mayor que 0.")
+        return precio
+
+
+class BaseDetalleCompraFormSet(BaseInlineFormSet):
+    """
+    Validación de TODAS las filas juntas.
+    Al CREAR no hace falta revisar stock: comprar siempre SUBE el stock.
+    Al EDITAR (reto): primero se quita lo que la compra había metido y luego se mete lo nuevo.
+    Si de esas unidades ya se vendió una parte, el stock final podría quedar NEGATIVO. Lo impedimos.
+    """
+
+    def clean(self):
+        super().clean()                          
+        if any(self.errors) or not self.instance.pk:  
+            return
+
+        nuevo = {}                              
+        for fila in self.forms:
+            datos = fila.cleaned_data
+            if not datos or datos.get("DELETE"):
+                continue
+            pid = datos["producto"].pk
+            nuevo[pid] = nuevo.get(pid, 0) + datos["cantidad"]
+
+        anterior = {}                            
+        for detalle in self.instance.detalles.all():
+            anterior[detalle.producto_id] = anterior.get(detalle.producto_id, 0) + detalle.cantidad
+
+        for pid, cantidad_anterior in anterior.items():
+            producto = Producto.objects.get(pk=pid)
+            final = producto.stock - cantidad_anterior + nuevo.get(pid, 0)   # cómo quedaría la bodega
+            if final < 0:
+                raise ValidationError(
+                    f"No puedes reducir tanto «{producto.nombre}»: de esta compra ya se vendieron "
+                    f"unidades y el stock quedaría en {final}."
+                )
+
+
+DetalleCompraFormSet = inlineformset_factory(
+    Compra,                                       
+    DetalleCompra,                                
+    form=DetalleCompraForm,                      
+    formset=BaseDetalleCompraFormSet,             
+    extra=0,                                      
+    min_num=1,                                   
+    validate_min=True,                            
+    can_delete=True,                            
+)
+
+
+class PerfilForm(forms.ModelForm):
+    class Meta:
+        model = Perfil
+        fields = ["cedula", "telefono", "cargo"]
+        widgets = {
+            "cedula": forms.TextInput(attrs={"class": "form-control", "maxlength": "10"}),
+            "telefono": forms.TextInput(attrs={"class": "form-control"}),
+            "cargo": forms.TextInput(attrs={"class": "form-control", "placeholder": "Ej: Vendedor"}),
+        }
+
+    def clean_cedula(self):
+        cedula = self.cleaned_data["cedula"].strip()
+        if cedula and (len(cedula) != 10 or not cedula.isdigit()):   
+            raise forms.ValidationError("La cédula debe tener 10 números.")
+        return cedula

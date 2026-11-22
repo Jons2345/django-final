@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block titulo %}{{ titulo }}{% endblock %}
+
+{% block contenido %}
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="tarjeta">
+            <h1 class="h4 titulo-pagina mb-4">{{ titulo }}{% if object %}: {{ object }}{% endif %}</h1>
+            <form method="post" novalidate>
+                {% csrf_token %}
+                <div class="row">
+                    {% for campo in form %}           {# cedula, nombres, apellidos, email, telefono, direccion #}
+                        <div class="col-md-6 mb-3">   {# dos columnas en pantallas medianas #}
+                            <label class="form-label fw-semibold" for="{{ campo.id_for_label }}">{{ campo.label }}</label>
+                            {{ campo }}
+                            {% for error in campo.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}   {# aquí sale el error de clean_cedula #}
+                        </div>
+                    {% endfor %}
+                </div>
+                <button type="submit" class="btn btn-verde">{{ boton }}</button>
+                <a href="{% url 'facturacion:cliente_lista' %}" class="btn btn-outline-secondary">Cancelar</a>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block titulo %}{{ cliente }}{% endblock %}
+
+{% block contenido %}
+<div class="row g-3">
+    <div class="col-lg-4">
+        <div class="tarjeta">
+            <h1 class="h4 titulo-pagina">{{ cliente }}</h1>
+            <ul class="list-group mb-3">
+                <li class="list-group-item"><b>Cédula:</b> {{ cliente.cedula }}</li>
+                <li class="list-group-item"><b>Correo:</b> {{ cliente.email|default:"—" }}</li>
+                <li class="list-group-item"><b>Teléfono:</b> {{ cliente.telefono|default:"—" }}</li>
+                <li class="list-group-item"><b>Dirección:</b> {{ cliente.direccion|default:"—" }}</li>
+                {# Campos que vienen del ModeloBase #}
+                <li class="list-group-item small text-muted">Registrado por {{ cliente.user|default:"—" }} · creado {{ cliente.fecha_creacion|date:"d/m/Y H:i" }}</li>
+            </ul>
+            <a href="{% url 'facturacion:cliente_editar' cliente.pk %}" class="btn btn-verde">Editar</a>
+            <a href="{% url 'facturacion:cliente_lista' %}" class="btn btn-outline-secondary">Volver</a>
+        </div>
+    </div>
+    <div class="col-lg-8">
+        <div class="tarjeta">
+            <h2 class="h5">Sus ventas</h2>
+            <table class="table align-middle">
+                <thead><tr><th>N.º</th><th>Fecha</th><th>Pago</th><th class="text-end">Total</th><th></th></tr></thead>
+                <tbody>
+                    {% for venta in cliente.ventas.all %}   {# 1:N de vuelta: related_name="ventas" #}
+                    <tr>
+                        <td>{{ venta.pk }}</td>
+                        <td>{{ venta.fecha_hora|date:"d/m/Y H:i" }}</td>
+                        <td>{{ venta.get_tipo_pago_display }}</td>
+                        <td class="text-end">${{ venta.total }}</td>
+                        <td class="text-end"><a href="{% url 'facturacion:venta_detalle' venta.pk %}" class="btn btn-sm btn-outline-success">Factura</a></td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="5" class="text-center text-muted py-3">Este cliente todavía no tiene ventas.</td></tr>
+                    {% endfor %}
+                </tbody>
+                <tfoot class="totales">
+                    <tr><td colspan="3" class="text-end fw-bold">Total comprado</td><td class="text-end fw-bold">${{ total_comprado|floatformat:2 }}</td><td></td></tr>
+                </tfoot>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

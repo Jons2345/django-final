@@ -1,0 +1,19 @@
+{% comment %}
+=====================================================================
+   _paginacion.html · pedazo de template que REUTILIZAN todas las listas de la Unidad 6.
+   Se usa con {% include "facturacion/_paginacion.html" %}.
+   El for interno copia los filtros que haya en la URL (q, proveedor, tipo_pago...)
+   para no perderlos al cambiar de página. Necesita page_obj (lo envía ListView con paginate_by).
+=====================================================================
+{% endcomment %}
+{% if page_obj.has_other_pages %}
+<nav class="mt-3"><ul class="pagination justify-content-center">
+    {% if page_obj.has_previous %}
+        <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}{% for clave, valor in request.GET.items %}{% if clave != 'page' %}&amp;{{ clave }}={{ valor|urlencode }}{% endif %}{% endfor %}">« Anterior</a></li>
+    {% endif %}
+    <li class="page-item disabled"><span class="page-link">Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</span></li>
+    {% if page_obj.has_next %}
+        <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}{% for clave, valor in request.GET.items %}{% if clave != 'page' %}&amp;{{ clave }}={{ valor|urlencode }}{% endif %}{% endfor %}">Siguiente »</a></li>
+    {% endif %}
+</ul></nav>
+{% endif %}
