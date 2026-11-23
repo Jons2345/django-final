@@ -22,11 +22,13 @@
                         {# Unidad 4 y 5: descomenta cada enlace cuando exista su URL #}
                         <li class="nav-item"><a class="nav-link" href="{% url 'facturacion:producto_lista' %}">Productos</a></li> 
                         <li class="nav-item"><a class="nav-link" href="{% url 'facturacion:venta_lista' %}">Ventas</a></li>
+                        <li class="nav-item"><a class="nav-link" href="{% url 'facturacion:marca_lista' %}">Marcas</a></li>
                         <li class="nav-item"><a class="nav-link" href="{% url 'facturacion:categoria_lista' %}">Categorias</a></li> 
-                        <li class="nav-item"><a class="nav-link" href="{% url 'facturacion:categoria_lista' %}">Clientes</a></li> 
-                        <li class="nav-item"><a class="nav-link" href="{% url 'facturacion:categoria_lista' %}">Proveedores</a></li> 
-                        <li class="nav-item"><a class="nav-link" href="{% url 'facturacion:categoria_lista' %}">Compras</a></li> 
-                        
+                        <li class="nav-item"><a class="nav-link" href="{% url 'facturacion:cliente_lista' %}">Clientes</a></li> 
+                        <li class="nav-item"><a class="nav-link" href="{% url 'facturacion:proveedor_lista' %}">Proveedores</a></li> 
+                        <li class="nav-item"><a class="nav-link" href="{% url 'facturacion:compra_lista' %}">Compras</a></li> 
+                        <li class="nav-item"><a class="nav-link" href="{% url 'facturacion:mi_perfil' %}">Mi perfil</a></li>
+
                         {# <li class="nav-item"><a class="nav-link" href="{% url 'facturacion:venta_lista' %}">Ventas</a></li> #}
                         {# TAREA: Marcas, Categorías, Clientes, Proveedores y Compras #}
                     {% endif %}

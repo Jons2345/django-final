@@ -16,11 +16,35 @@
             <form method="post" enctype="multipart/form-data" novalidate>
                 {% csrf_token %}
                 {% for campo in form %}               {# recorre todos los campos del ProductoForm #}
-                    <div class="mb-3">
-                        <label class="form-label fw-semibold" for="{{ campo.id_for_label }}">{{ campo.label }}</label>
-                        {{ campo }}
-                        {% for error in campo.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
-                    </div>
+
+                    {% if campo.name == "categorias" %}   {# N:M: varias casillas, una por categoría #}
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">{{ campo.label }}</label>
+                            {% for opcion in campo %}     {# cada "opcion" es UNA casilla (una categoría) #}
+                                <div class="form-check">  {# el contenedor que Bootstrap necesita #}
+                                    {{ opcion.tag }}      {# solo el <input type="checkbox"> #}
+                                    <label class="form-check-label" for="{{ opcion.id_for_label }}">{{ opcion.choice_label }}</label>
+                                </div>
+                            {% empty %}
+                                <div class="text-muted small">No hay categorías. Créalas primero.</div>
+                            {% endfor %}
+                            {% for error in campo.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+                        </div>
+
+                    {% elif campo.name == "activo" %}     {# una sola casilla: primero la casilla, luego el texto #}
+                        <div class="form-check mb-3">
+                            {{ campo }}
+                            <label class="form-check-label" for="{{ campo.id_for_label }}">{{ campo.label }}</label>
+                        </div>
+
+                    {% else %}                            {# el resto de campos: etiqueta arriba, caja abajo #}
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold" for="{{ campo.id_for_label }}">{{ campo.label }}</label>
+                            {{ campo }}
+                            {% for error in campo.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+                        </div>
+                    {% endif %}
+
                 {% endfor %}
                 <button type="submit" class="btn btn-verde">{{ boton }}</button>
                 <a href="{% url 'facturacion:producto_lista' %}" class="btn btn-outline-secondary">Cancelar</a>
